@@ -13,10 +13,15 @@ import com.baidu.location.LocationClient;
 import com.baidu.location.LocationClientOption;
 import com.baidu.mapapi.map.BaiduMap;
 import com.baidu.mapapi.map.BaiduMapOptions;
+import com.baidu.mapapi.map.BitmapDescriptor;
+import com.baidu.mapapi.map.BitmapDescriptorFactory;
+import com.baidu.mapapi.map.InfoWindow;
 import com.baidu.mapapi.map.MapStatus;
 import com.baidu.mapapi.map.MapStatusUpdate;
 import com.baidu.mapapi.map.MapStatusUpdateFactory;
 import com.baidu.mapapi.map.MapView;
+import com.baidu.mapapi.map.Marker;
+import com.baidu.mapapi.map.MarkerOptions;
 import com.baidu.mapapi.map.MyLocationData;
 import com.baidu.mapapi.model.LatLng;
 
@@ -54,7 +59,7 @@ public class MainActivity extends AppCompatActivity {
         // 地图状态
         MapStatus mapStatus = new MapStatus.Builder()
                 .overlook(0) // 地图俯仰的角度 -45--0
-                .zoom(10) // 缩放的级别 3--21
+                .zoom(15) // 缩放的级别 3--21
                 .build();
 
         BaiduMapOptions options = new BaiduMapOptions()
@@ -78,6 +83,10 @@ public class MainActivity extends AppCompatActivity {
 
         // 为地图设置状态的监听
         mBaiduMap.setOnMapStatusChangeListener(mapStatusListener);
+
+        mBaiduMap.setOnMarkerClickListener(markerListener);
+
+        // 不使用ButterKnife时，对findById及setOnClick的封装
         intiView();
     }
 
@@ -139,8 +148,9 @@ public class MainActivity extends AppCompatActivity {
                 option.setOpenGps(true);  // 打开GPS
                 option.setCoorType("bd0911"); // 设置默认坐标类型，默认gcj02
                 option.setIsNeedAddress(true); // 默认不需要
-                option.setScanSpan(5000); // 设置扫描周期
-                //添加配置到locationClient
+                // 设置扫描周期后可能会造成地图刷新太慢
+//                option.setScanSpan(5000); // 设置扫描周期
+                //添加配置信息
                 locationClient.setLocOption(option);
 
                 //设置监听
@@ -179,7 +189,7 @@ public class MainActivity extends AppCompatActivity {
             MyLocationData myLocationData = new MyLocationData.Builder()
                     .latitude(lat) // 纬度
                     .longitude(lng) // 经度
-                    .accuracy(50f) // 定位的精度的大小
+                    .accuracy(100f) // 定位的精度的大小
                     .build();
             mBaiduMap.setMyLocationData(myLocationData);
 
@@ -195,6 +205,9 @@ public class MainActivity extends AppCompatActivity {
             // 我们定位的位置
             mMyloation = new LatLng(lat,lng);
             moveToMyLocation();
+
+            addMarker(new LatLng(lat+0.0001,lng+0.0001));
+
         }
     };
 
@@ -205,12 +218,61 @@ public class MainActivity extends AppCompatActivity {
         // 主要是将地图的位置设置成当前位置
         MapStatus mapStatus = new MapStatus.Builder()
                 .target(mMyloation)
-                .rotate(0) // 摆正地图
-                .zoom(20)
+                .rotate(0) // 作用是摆正地图
+                .zoom(19)
                 .build();
 
         // 更新地图的状态
         MapStatusUpdate update = MapStatusUpdateFactory.newMapStatus(mapStatus);
         mBaiduMap.animateMapStatus(update);
     }
+
+    private BitmapDescriptor dot = BitmapDescriptorFactory.fromResource(R.drawable.treasure_dot);
+    private BitmapDescriptor dot_click = BitmapDescriptorFactory.fromResource(R.drawable.treasure_expanded);
+
+    /**
+     * 在某一位置添加标注物
+     * 1.目的：在地图上添加一个标志
+     * 2.实现步骤：主要是两方面
+     * （1）确定要添加标注物的位置：经纬度
+     * （2）确定要添加的图标
+     * @param latLng
+     */
+    private void addMarker(LatLng latLng) {
+        // MarkerOptions是抽象类OverlayOptions的子类
+        MarkerOptions options = new MarkerOptions();
+        options.position(latLng);
+        options.icon(dot);
+
+        // 添加标注物
+        mBaiduMap.addOverlay(options);
+    }
+
+    private BaiduMap.OnMarkerClickListener markerListener = new BaiduMap.OnMarkerClickListener() {
+        /**
+         * marker点击的时候会触发这个方法
+         * 展示一个信息窗口：文本、图片...
+         * 1.目的：点击之后，展示出一个InfoWindow
+         * 2.实现：（1）创建一个InfoWindow
+         *         (2) 设置展示的是什么
+         *        （3）是否在地图上展示出来
+         * @param marker
+         * @return
+         */
+        @Override
+        public boolean onMarkerClick(Marker marker) {
+
+            InfoWindow infoWindow = new InfoWindow(dot_click, marker.getPosition(), 0, new InfoWindow.OnInfoWindowClickListener() {
+                @Override
+                public void onInfoWindowClick() {
+
+                }
+            });
+
+            mBaiduMap.showInfoWindow(infoWindow);
+
+            return false;
+        }
+    };
+
 }
